@@ -1,0 +1,6 @@
+*
+!.gitignore
+
+# project-specific configuration files
+!launch.json
+!tasks.json

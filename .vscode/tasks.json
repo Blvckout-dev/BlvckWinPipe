@@ -1,0 +1,49 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        // CMake - Configure
+        {
+            "label": "configure",
+            "type": "shell",
+            "command": "cmake -B ${workspaceFolder}/build",
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "none"
+        },
+
+        // ------------------------
+
+        // Debug - Build
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cmake --build ${workspaceFolder}/build --config Debug",
+            "dependsOn": [ "configure" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+
+        // ------------------------
+
+        // Release - Build
+        {
+            "label": "release-build",
+            "type": "shell",
+            "command": "cmake --build ${workspaceFolder}/build --config Release",
+            "dependsOn": [ "configure" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "build"
+        }
+    ]
+}
