@@ -31,6 +31,19 @@
             }
         },
 
+        /// Debug - Install
+        {
+            "label": "install",
+            "type": "shell",
+            "command": "cmake --install ${workspaceFolder}/build --config Debug",
+            "dependsOn": [ "build" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "none"
+        },
+
         // ------------------------
 
         // Release - Build
@@ -44,6 +57,19 @@
                 "$gcc"
             ],
             "group": "build"
+        },
+
+        // Release - Install
+        {
+            "label": "release-install",
+            "type": "shell",
+            "command": "cmake --install ${workspaceFolder}/build --config Release",
+            "dependsOn": [ "release-build" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "none"
         }
     ]
 }
