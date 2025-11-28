@@ -42,3 +42,6 @@ set_target_properties(
     LIBRARY_OUTPUT_DIRECTORY "${LIB_OUT_DIR}/$<CONFIG>"
     RUNTIME_OUTPUT_DIRECTORY "${BIN_OUT_DIR}/$<CONFIG>"
 )
+
+# Examples
+add_subdirectory(examples)
