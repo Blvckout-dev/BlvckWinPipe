@@ -24,6 +24,9 @@ else()
     add_library(${PROJECT_NAME} STATIC)
 endif()
 
+# Namespace alias
+add_library(Blvckout::BlvckWinPipe ALIAS ${PROJECT_NAME})
+
 add_subdirectory(src)
 
 target_include_directories(
