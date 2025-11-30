@@ -2,7 +2,9 @@
 
 namespace Blvckout::BlvckWinPipe::Server
 {
-    PipeServer::PipeServer()
+    PipeServer::PipeServer(const std::wstring& name) :
+        _Name(name),
+        _PipeName(std::wstring(PIPE_NAME_PREFIX) + name)
     {
     }
 
