@@ -31,6 +31,22 @@
             }
         },
 
+        /// Debug - Test
+        {
+            "label": "test",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "command": "ctest -C Debug -T test --output-on-failure",
+            "dependsOn": [ "build" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "none"
+        },
+
         /// Debug - Install
         {
             "label": "install",
@@ -57,6 +73,22 @@
                 "$gcc"
             ],
             "group": "build"
+        },
+
+        /// Release - Test
+        {
+            "label": "release-test",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "command": "ctest -C Release -T test --output-on-failure",
+            "dependsOn": [ "release-build" ],
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ],
+            "group": "none"
         },
 
         // Release - Install
