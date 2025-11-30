@@ -47,6 +47,10 @@ set_target_properties(
 # Examples
 add_subdirectory(examples)
 
+# Test
+enable_testing()
+add_subdirectory(tests)
+
 # Install rules
 include(GNUInstallDirs)
 
