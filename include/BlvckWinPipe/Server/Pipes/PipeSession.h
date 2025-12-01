@@ -1,10 +1,13 @@
 #pragma once
 
-class PipeSession
+namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
-private:
+    class PipeSession
+    {
+    private:
 
-public:
-    PipeSession();
-    ~PipeSession();
-};
+    public:
+        PipeSession();
+        ~PipeSession();
+    };
+}

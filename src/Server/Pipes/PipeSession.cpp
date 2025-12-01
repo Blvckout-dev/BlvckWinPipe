@@ -1,9 +1,12 @@
 #include "BlvckWinPipe/Server/Pipes/PipeSession.h"
 
-PipeSession::PipeSession()
+namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
-}
+    PipeSession::PipeSession()
+    {
+    }
 
-PipeSession::~PipeSession()
-{
+    PipeSession::~PipeSession()
+    {
+    }
 }

@@ -1,12 +1,13 @@
 #pragma once
 
-class PipeListener
+namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
-private:
+    class PipeListener
+    {
+    private:
 
-public:
-    PipeListener();
-    ~PipeListener();
-};
-
-
+    public:
+        PipeListener();
+        ~PipeListener();
+    };
+}

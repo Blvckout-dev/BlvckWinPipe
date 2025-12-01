@@ -1,9 +1,12 @@
 #include "BlvckWinPipe/Server/Pipes/PipeListener.h"
 
-PipeListener::PipeListener()
+namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
-}
+    PipeListener::PipeListener()
+    {
+    }
 
-PipeListener::~PipeListener()
-{
+    PipeListener::~PipeListener()
+    {
+    }
 }
