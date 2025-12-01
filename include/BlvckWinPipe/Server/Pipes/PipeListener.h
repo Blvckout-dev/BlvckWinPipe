@@ -8,6 +8,13 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     public:
         PipeListener();
+
+        PipeListener(const PipeListener&) = delete;
+        PipeListener& operator=(const PipeListener&) = delete;
+
+        PipeListener(PipeListener&&) = delete;
+        PipeListener& operator=(PipeListener&&) = delete;
+
         ~PipeListener();
     };
 }
