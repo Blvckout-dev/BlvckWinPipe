@@ -1,6 +1,9 @@
 #include "BlvckWinPipe/Server/PipeServer.h"
 
+#include <stdexcept>
+
 #include "BlvckWinPipe/Platform/Platform.h"
+#include "BlvckWinPipe/Utils/WinUtils.h"
 
 namespace Blvckout::BlvckWinPipe::Server
 {
@@ -38,5 +41,26 @@ namespace Blvckout::BlvckWinPipe::Server
 
     PipeServer::~PipeServer()
     {
+    }
+
+    void PipeServer::Start()
+    {
+        if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
+
+        _IOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
+
+        if (!_IOCP) {
+            DWORD errCode = GetLastError();
+            std::string errMsg = "[PipeServer] Failed to create IOCP: " +
+                Utils::Windows::FormatErrorMessage(errCode);
+
+            // ToDo: Implement logging
+            throw std::runtime_error(errMsg);
+        }
+
+        // Spawn worker threads
+        for (size_t i = 0; i < _MaxWorkerThreads; ++i) {
+            _Workers.emplace_back([this] { this->WorkerThread(); });
+        }
     }
 } // namespace Blvckout::BlvckWinPipe::Server
