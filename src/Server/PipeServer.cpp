@@ -41,6 +41,7 @@ namespace Blvckout::BlvckWinPipe::Server
 
     PipeServer::~PipeServer()
     {
+        Stop();
     }
 
     void PipeServer::Start()
@@ -62,5 +63,22 @@ namespace Blvckout::BlvckWinPipe::Server
         for (size_t i = 0; i < _MaxWorkerThreads; ++i) {
             _Workers.emplace_back([this] { this->WorkerThread(); });
         }
+    }
+
+    void PipeServer::Stop() noexcept
+    {
+        if (!_IsRunning.exchange(false, std::memory_order_acq_rel)) return;
+
+        // Signal workers to exit
+        for (size_t i = 0; i < _Workers.size(); ++i) {
+            PostQueuedCompletionStatus(_IOCP, 0, 0, nullptr);
+        }
+
+        for (auto &t : _Workers) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+        _Workers.clear();
     }
 } // namespace Blvckout::BlvckWinPipe::Server
