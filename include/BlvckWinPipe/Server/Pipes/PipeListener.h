@@ -14,6 +14,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     private:
         const WinHandle& _IOCP;
         std::wstring _PipeName;
+
+        std::atomic<bool> _IsRunning { false };
     public:
         PipeListener(const WinHandle& iocp, std::wstring pipeName);
 
@@ -24,5 +26,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         PipeListener& operator=(PipeListener&&) = delete;
 
         ~PipeListener();
+
+        void Listen();
+        void Stop();
     };
 }

@@ -11,4 +11,14 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     PipeListener::~PipeListener()
     {
     }
+
+    void PipeListener::Listen()
+    {
+        if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
+    }
+
+    void PipeListener::Stop()
+    {
+        if (!_IsRunning.exchange(false, std::memory_order_acq_rel)) return;
+    }
 }
