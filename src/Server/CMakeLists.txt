@@ -1,3 +1,5 @@
+add_subdirectory(Pipes)
+
 target_sources(${PROJECT_NAME}
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/PipeServer.cpp
