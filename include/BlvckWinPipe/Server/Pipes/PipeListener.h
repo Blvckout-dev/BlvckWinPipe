@@ -1,13 +1,21 @@
 #pragma once
 
+#include <atomic>
+#include <string>
+
+#include "BlvckWinPipe/Utils/WinHandle.h"
+
 namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
+    using Utils::Windows::WinHandle;
+
     class PipeListener
     {
     private:
-
+        const WinHandle& _IOCP;
+        std::wstring _PipeName;
     public:
-        PipeListener();
+        PipeListener(const WinHandle& iocp, std::wstring pipeName);
 
         PipeListener(const PipeListener&) = delete;
         PipeListener& operator=(const PipeListener&) = delete;

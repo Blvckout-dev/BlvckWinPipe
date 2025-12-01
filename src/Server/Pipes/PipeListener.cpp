@@ -2,7 +2,9 @@
 
 namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
-    PipeListener::PipeListener()
+    PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) :
+        _IOCP(iocp),
+        _PipeName(std::move(pipeName))
     {
     }
 
