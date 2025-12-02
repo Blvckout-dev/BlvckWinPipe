@@ -129,6 +129,11 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     void PipeListener::Listen()
     {
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
+
+        if (!PostAccept()) {
+            Stop();
+            // ToDo: Implement OnError event
+        }
     }
 
     void PipeListener::Stop() noexcept
