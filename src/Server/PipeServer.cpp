@@ -5,7 +5,7 @@
 #include "BlvckWinPipe/Platform/Platform.h"
 #include "BlvckWinPipe/Utils/WinUtils.h"
 
-#include "BlvckWinPipe/Server/Pipes/PipeListener.h"
+#include "BlvckWinPipe/Server/Pipes/IPipeIoEntity.h"
 
 namespace Blvckout::BlvckWinPipe::Server
 {
@@ -35,7 +35,7 @@ namespace Blvckout::BlvckWinPipe::Server
                 // ToDo: Implement logging
             }
 
-            auto pipeEntity = reinterpret_cast<Pipes::PipeListener*>(completionKey);
+            auto pipeEntity = reinterpret_cast<Pipes::IPipeIoEntity*>(completionKey);
             if (!pipeEntity) {
                 // ToDo: Implement logging
                 continue;
