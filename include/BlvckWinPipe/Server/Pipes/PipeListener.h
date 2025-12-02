@@ -39,6 +39,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         
         ~PipeListener();
 
+        void HandleIoCompletion(DWORD bytesTransferred, OVERLAPPED* pOverlap, DWORD err);
+
         void Listen();
         void Stop();
     };

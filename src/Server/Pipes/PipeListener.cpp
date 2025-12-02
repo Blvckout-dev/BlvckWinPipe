@@ -99,6 +99,33 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     {
     }
 
+    void PipeListener::HandleIoCompletion(DWORD bytesTransferred, OVERLAPPED* pOverlap, DWORD err)
+    {
+        if (err == ERROR_SUCCESS || err == ERROR_PIPE_CONNECTED)
+        {
+            // Promote to session
+            // ToDo: OnAccept(std::move(_PipeHandle)); // Server callback
+        } else{
+            // Cleanup failed/canceled pipe
+            _PipeHandle.Reset();
+            // ToDo: Implement logging
+        }
+
+        try {
+            PostAccept();
+        } catch(const std::exception& e) {
+            // ToDo: Implement logging
+        }
+
+        // Decrement pending operations
+        if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) == 1)
+        {
+            // Notify Stop()
+            std::lock_guard<std::mutex> lock(_PendingOpsMutex);
+            _PendingOpsCv.notify_all();
+        }
+    }
+
     void PipeListener::Listen()
     {
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
