@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <string>
 
 #include "BlvckWinPipe/Platform/Platform.h"
@@ -18,6 +19,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         WinHandle _PipeHandle;
         OVERLAPPED _ConnectOverlap {};
+
+        std::atomic<size_t> _PendingOps {0};
+        std::mutex _PendingOpsMutex;
+        std::condition_variable _PendingOpsCv;
 
         std::atomic<bool> _IsRunning { false };
 

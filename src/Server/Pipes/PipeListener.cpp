@@ -55,6 +55,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         ZeroMemory(&_ConnectOverlap, sizeof(_ConnectOverlap));
 
         BOOL connected = ConnectNamedPipe(_PipeHandle, &_ConnectOverlap);
+        _PendingOps.fetch_add(1, std::memory_order_acq_rel);
         
         DWORD lastErr = ERROR_SUCCESS;
         if (!connected) lastErr = GetLastError();
@@ -72,6 +73,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             ) {
                 // Failed to post completion — cleanup and report
                 DWORD pqErr = GetLastError();
+                _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
                 _PipeHandle.Reset();
                 throw std::runtime_error(
                     "Failed to post queued completion status: " +
@@ -79,6 +81,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 );
             }
         } else if (lastErr != ERROR_IO_PENDING) {
+            _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
             _PipeHandle.Reset();
             return false;
         }
@@ -101,8 +104,23 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
     }
 
-    void PipeListener::Stop()
+    void PipeListener::Stop() noexcept
     {
         if (!_IsRunning.exchange(false, std::memory_order_acq_rel)) return;
+
+        CancelIoEx(_PipeHandle, nullptr);
+
+        try {
+            std::unique_lock<std::mutex> lock(_PendingOpsMutex);
+
+            _PendingOpsCv.wait(
+                lock,
+                [this] { return _PendingOps.load(std::memory_order_acquire) == 0; }
+            );
+        } catch (...) {
+            // ToDo: Implement logging
+        }
+
+        _PipeHandle.Reset();
     }
 }
