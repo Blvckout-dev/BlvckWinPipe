@@ -6,12 +6,13 @@
 
 #include "BlvckWinPipe/Platform/Platform.h"
 #include "BlvckWinPipe/Utils/WinHandle.h"
+#include "BlvckWinPipe/Server/Pipes/IPipeIoEntity.h"
 
 namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
     using Utils::Windows::WinHandle;
 
-    class PipeListener
+    class PipeListener : IPipeIoEntity
     {
     private:
         const WinHandle& _IOCP;
