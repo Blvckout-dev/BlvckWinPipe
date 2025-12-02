@@ -42,6 +42,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         void HandleIoCompletion(DWORD bytesTransferred, OVERLAPPED* pOverlap, DWORD err);
 
         void Listen();
-        void Stop();
+        void Stop() noexcept;
     };
 }
