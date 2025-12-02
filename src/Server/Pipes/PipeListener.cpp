@@ -8,7 +8,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
     bool PipeListener::PostAccept()
     {
-        if (!_IsRunning) return false;
+        if (!_IsRunning.load(std::memory_order_acquire)) return false;
 
         constexpr DWORD kPipeBufferSize = 0;
         constexpr DWORD kDefaultTimeoutMs = 0;
