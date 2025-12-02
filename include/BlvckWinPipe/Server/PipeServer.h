@@ -7,6 +7,7 @@
 
 #include "BlvckWinPipe/Export.h"
 #include "BlvckWinPipe/Utils/WinHandle.h"
+#include "BlvckWinPipe/Server/Pipes/PipeListener.h"
 
 namespace Blvckout::BlvckWinPipe::Server
 {
@@ -23,6 +24,9 @@ namespace Blvckout::BlvckWinPipe::Server
 
         size_t _MaxWorkerThreads;
         std::vector<std::thread> _Workers;
+
+        size_t _MaxListeners { 2u };
+        std::vector<std::unique_ptr<Pipes::PipeListener>> _Listeners;
 
         std::atomic<bool> _IsRunning { false };
 

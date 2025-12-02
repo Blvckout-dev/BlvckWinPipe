@@ -5,6 +5,8 @@
 #include "BlvckWinPipe/Platform/Platform.h"
 #include "BlvckWinPipe/Utils/WinUtils.h"
 
+#include "BlvckWinPipe/Server/Pipes/PipeListener.h"
+
 namespace Blvckout::BlvckWinPipe::Server
 {
     void PipeServer::WorkerThread()
@@ -26,6 +28,20 @@ namespace Blvckout::BlvckWinPipe::Server
             if (completionKey == 0 && lpOverlapped == nullptr) {
                 break;
             }
+
+            DWORD errCode = ERROR_SUCCESS;
+            if (!ok) {
+                errCode = GetLastError();
+                // ToDo: Implement logging
+            }
+
+            auto pipeEntity = reinterpret_cast<Pipes::PipeListener*>(completionKey);
+            if (!pipeEntity) {
+                // ToDo: Implement logging
+                continue;
+            }
+
+            pipeEntity->HandleIoCompletion(bytesTransferred, lpOverlapped, errCode);
         }
     }
 
@@ -63,11 +79,25 @@ namespace Blvckout::BlvckWinPipe::Server
         for (size_t i = 0; i < _MaxWorkerThreads; ++i) {
             _Workers.emplace_back([this] { this->WorkerThread(); });
         }
+
+        // Start listeners
+        for (size_t i = 0; i < _MaxListeners; i++) {
+            auto listener = std::make_unique<Pipes::PipeListener>(_IOCP, PipeName());
+            listener->Listen();
+
+            _Listeners.push_back(std::move(listener));
+        }
     }
 
     void PipeServer::Stop() noexcept
     {
         if (!_IsRunning.exchange(false, std::memory_order_acq_rel)) return;
+
+        // Stop listeners
+        for (auto &&l : _Listeners) {
+            l->Stop();
+        }
+        _Listeners.clear();
 
         // Signal workers to exit
         for (size_t i = 0; i < _Workers.size(); ++i) {
