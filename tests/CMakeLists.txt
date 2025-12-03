@@ -7,19 +7,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(catch2)
 
+set(TEST_TARGET_NAME tests)
+
 add_executable(
-    tests
+    ${TEST_TARGET_NAME}
     WinHandleTests.cpp
 )
 
 target_include_directories(
-    tests
+    ${TEST_TARGET_NAME}
     PRIVATE
     ${PROJECT_SOURCE_DIR}/include
 )
 
 target_link_libraries(
-    tests
+    ${TEST_TARGET_NAME}
     PRIVATE
     Catch2::Catch2WithMain
     Blvckout::BlvckWinPipe
@@ -27,5 +29,5 @@ target_link_libraries(
 
 add_test(
     NAME WinHandleTests
-    COMMAND tests
+    COMMAND ${TEST_TARGET_NAME}
 )
