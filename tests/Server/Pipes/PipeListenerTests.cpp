@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <future>
+#include <thread>
 
 #include "BlvckWinPipe/Platform/Platform.h"
 #include "BlvckWinPipe/Server/Pipes/PipeListener.h"
@@ -8,83 +9,119 @@
 
 using namespace Blvckout::BlvckWinPipe::Server::Pipes;
 
-TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
-    WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
-    PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
-    listener.SetOnAccept([](WinHandle){});
+struct PipeListenerFixture {
+    WinHandle iocp;
+    PipeListener listener;
 
-    SECTION("Initial state") {
-        REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+    PipeListenerFixture()
+        : iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1))
+        , listener(iocp, L"\\\\.\\pipe\\TestPipe")
+    {
+        listener.SetOnAccept([](WinHandle) {});
     }
+};
 
-    SECTION("Listen triggers running and PostAccept") {
-        listener.Listen(); // automatically triggers PostAccept
-        REQUIRE(PipeListenerTestAccess::IsRunning(listener));
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) > 0);
-    }
+/*
+============================================================
+Lifecycle Tests
+============================================================
+*/
 
-    SECTION("Stop resets running and cancels pending operations") {
-        listener.Listen();
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
-
-        // Ensure Stop thread waits for pending ops
-        std::promise<void> stopStarted;
-        std::future<void> stopFuture = stopStarted.get_future();
-
-        std::thread stopThread([&listener, &stopStarted]() {
-            stopStarted.set_value();
-            listener.Stop(); // blocks until pending ops zero
-        });
-
-        stopFuture.wait(); // Ensure Stop is now waiting
-        PipeListenerTestAccess::SimulateOperationAbortedCompletion(listener);
-
-        stopThread.join();
-
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
-        REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
-    }
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - Initial state",
+    "[PipeListener][Lifecycle]"
+) {
+    REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
 }
 
-TEST_CASE("PipeListener - Idempotentcy", "[PipeListener]") {
-    WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
-    PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
-    listener.SetOnAccept([](WinHandle){});
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - Listen triggers running and PostAccept",
+    "[PipeListener][Lifecycle]"
+) {
+    listener.Listen();
+    REQUIRE(PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) > 0);
+}
 
-    SECTION("Listen is idempotent") {
-        // First call starts the listener and adds one pending operation
-        listener.Listen();
-        // Second call should have no effect
-        listener.Listen();
-        REQUIRE(PipeListenerTestAccess::IsRunning(listener)); // listener must be running
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1); // only one pending operation
-    }
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - Stop resets running and cancels pending operations",
+    "[PipeListener][Lifecycle]"
+) {
+    listener.Listen();
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
 
-    SECTION("Stop is idempotent") {
-        // First call stops the listener
-        listener.Stop();
-        // Second call should have no effect
-        listener.Stop();
-        REQUIRE(!PipeListenerTestAccess::IsRunning(listener)); // listener must be stopped
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0); // no pending operations
-    }
+    // Ensure Stop thread is waiting
+    std::promise<void> stopStarted;
+    auto stopFuture = stopStarted.get_future();
 
-    SECTION("PostAccept is idempotent") {
-        // Calling PostAccept while listener is not running should do nothing
-        PipeListenerTestAccess::CallPostAccept(listener);
-        PipeListenerTestAccess::CallPostAccept(listener);
-        REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+    std::thread stopThread([&]() {
+        stopStarted.set_value();
+        listener.Stop(); // blocks until pending ops reach zero
+    });
 
-        // Start listener to enable PostAccept behavior
-        listener.Listen();
-        
-        // First PostAccept should add one pending operation
-        PipeListenerTestAccess::CallPostAccept(listener);
-        // Second PostAccept should not add another pending operation
-        PipeListenerTestAccess::CallPostAccept(listener);
-        REQUIRE(PipeListenerTestAccess::IsRunning(listener));
-        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
-    }
+    stopFuture.wait();
+
+    // Simulate completion abort to unblock Stop()
+    PipeListenerTestAccess::SimulateOperationAbortedCompletion(listener);
+
+    stopThread.join();
+
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+    REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+}
+
+/*
+============================================================
+Idempotency Tests
+============================================================
+*/
+
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - Listen is idempotent",
+    "[PipeListener][Idempotent]"
+) {
+    listener.Listen();
+    listener.Listen();
+
+    REQUIRE(PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
+}
+
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - Stop is idempotent",
+    "[PipeListener][Idempotent]"
+) {
+    listener.Stop();
+    listener.Stop();
+
+    REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+}
+
+TEST_CASE_METHOD(
+    PipeListenerFixture,
+    "PipeListener - PostAccept is idempotent",
+    "[PipeListener][Idempotent]"
+) {
+    // While not running → PostAccept does nothing
+    PipeListenerTestAccess::CallPostAccept(listener);
+    PipeListenerTestAccess::CallPostAccept(listener);
+
+    REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+
+    // Now enable PostAccept behavior
+    listener.Listen();
+
+    PipeListenerTestAccess::CallPostAccept(listener);
+    PipeListenerTestAccess::CallPostAccept(listener);
+
+    REQUIRE(PipeListenerTestAccess::IsRunning(listener));
+    REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
 }
