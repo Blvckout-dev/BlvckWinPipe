@@ -1,5 +1,6 @@
 #include "BlvckWinPipe/Server/Pipes/PipeListener.h"
 
+#include <cassert>
 #include <stdexcept>
 
 #include "BlvckWinPipe/Utils/WinUtils.h"
@@ -104,7 +105,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         if (err == ERROR_SUCCESS || err == ERROR_PIPE_CONNECTED)
         {
             // Promote to session
-            // ToDo: OnAccept(std::move(_PipeHandle)); // Server callback
+            _OnAccept(std::move(_PipeHandle)); // Server callback
         } else{
             // Cleanup failed/canceled pipe
             _PipeHandle.Reset();
@@ -129,6 +130,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     void PipeListener::Listen()
     {
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
+
+        if (!_OnAccept) {
+            throw std::runtime_error("OnAccept callback must be set before calling Listen()");
+        }
 
         if (!PostAccept()) {
             Stop();

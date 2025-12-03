@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 
@@ -14,6 +15,9 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     class PipeListener : IPipeIoEntity
     {
+    public:
+        using AcceptCallback = std::function<void(WinHandle pipeHandle)>;
+
     private:
         const WinHandle& _IOCP;
         std::wstring _PipeName;
@@ -28,6 +32,9 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         std::atomic<bool> _IsRunning { false };
 
         bool PostAccept();
+
+        // Events
+        AcceptCallback _OnAccept;
 
     public:
         PipeListener(const WinHandle& iocp, std::wstring pipeName);
@@ -45,6 +52,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         void Listen();
         void Stop() noexcept;
 
+        // Events
+        void SetOnAccept(AcceptCallback cb) { _OnAccept = std::move(cb); }
+
+        // Testing
         friend class PipeListenerTestAccess;
     };
 }
