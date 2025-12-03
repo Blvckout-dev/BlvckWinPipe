@@ -13,12 +13,14 @@ add_executable(
     ${TEST_TARGET_NAME}
 )
 
+add_subdirectory(Server)
 add_subdirectory(Utils)
 
 target_include_directories(
     ${TEST_TARGET_NAME}
     PRIVATE
     ${PROJECT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
 
 target_link_libraries(

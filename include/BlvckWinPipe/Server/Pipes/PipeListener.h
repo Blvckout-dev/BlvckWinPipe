@@ -44,5 +44,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         void Listen();
         void Stop() noexcept;
+
+        friend class PipeListenerTestAccess;
     };
 }
