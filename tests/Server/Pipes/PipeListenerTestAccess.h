@@ -23,6 +23,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             return listener._PendingOps.load(std::memory_order_acquire);
         }
 
+        static bool CallPostAccept(PipeListener& listener) {
+            return listener.PostAccept();
+        }
+
         static void SimulateOperationAbortedCompletion(PipeListener& listener) {
             listener.HandleIoCompletion(0, nullptr, ERROR_OPERATION_ABORTED);
         }

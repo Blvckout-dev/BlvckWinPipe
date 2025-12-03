@@ -45,3 +45,44 @@ TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
         REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
     }
 }
+
+TEST_CASE("PipeListener - Idempotentcy", "[PipeListener]") {
+    WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
+    PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
+
+    SECTION("Listen is idempotent") {
+        // First call starts the listener and adds one pending operation
+        listener.Listen();
+        // Second call should have no effect
+        listener.Listen();
+        REQUIRE(PipeListenerTestAccess::IsRunning(listener)); // listener must be running
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1); // only one pending operation
+    }
+
+    SECTION("Stop is idempotent") {
+        // First call stops the listener
+        listener.Stop();
+        // Second call should have no effect
+        listener.Stop();
+        REQUIRE(!PipeListenerTestAccess::IsRunning(listener)); // listener must be stopped
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0); // no pending operations
+    }
+
+    SECTION("PostAccept is idempotent") {
+        // Calling PostAccept while listener is not running should do nothing
+        PipeListenerTestAccess::CallPostAccept(listener);
+        PipeListenerTestAccess::CallPostAccept(listener);
+        REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
+
+        // Start listener to enable PostAccept behavior
+        listener.Listen();
+        
+        // First PostAccept should add one pending operation
+        PipeListenerTestAccess::CallPostAccept(listener);
+        // Second PostAccept should not add another pending operation
+        PipeListenerTestAccess::CallPostAccept(listener);
+        REQUIRE(PipeListenerTestAccess::IsRunning(listener));
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
+    }
+}
