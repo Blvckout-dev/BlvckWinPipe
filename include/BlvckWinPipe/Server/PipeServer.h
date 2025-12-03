@@ -31,6 +31,8 @@ namespace Blvckout::BlvckWinPipe::Server
         std::atomic<bool> _IsRunning { false };
 
         void WorkerThread();
+
+        void OnClientConnect(WinHandle pipeHandle);
     public:
         PipeServer(const std::wstring& name);
         ~PipeServer();

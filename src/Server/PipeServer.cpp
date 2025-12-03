@@ -45,6 +45,11 @@ namespace Blvckout::BlvckWinPipe::Server
         }
     }
 
+    void PipeServer::OnClientConnect(WinHandle pipeHandle)
+    {
+        // ToDo: Pass handle to PipeSession and add to sessions vector
+    }
+
     PipeServer::PipeServer(const std::wstring& name) :
         _Name(name),
         _PipeName(std::wstring(PIPE_NAME_PREFIX) + name),
@@ -83,6 +88,11 @@ namespace Blvckout::BlvckWinPipe::Server
         // Start listeners
         for (size_t i = 0; i < _MaxListeners; i++) {
             auto listener = std::make_unique<Pipes::PipeListener>(_IOCP, PipeName());
+            
+            listener->SetOnAccept([this](WinHandle pipeHandle){
+                OnClientConnect(std::move(pipeHandle));
+            });
+            
             listener->Listen();
 
             _Listeners.push_back(std::move(listener));
