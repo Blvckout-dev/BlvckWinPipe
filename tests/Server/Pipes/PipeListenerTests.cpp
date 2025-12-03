@@ -11,6 +11,7 @@ using namespace Blvckout::BlvckWinPipe::Server::Pipes;
 TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
     WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
     PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
+    listener.SetOnAccept([](WinHandle){});
 
     SECTION("Initial state") {
         REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
@@ -49,6 +50,7 @@ TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
 TEST_CASE("PipeListener - Idempotentcy", "[PipeListener]") {
     WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
     PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
+    listener.SetOnAccept([](WinHandle){});
 
     SECTION("Listen is idempotent") {
         // First call starts the listener and adds one pending operation
