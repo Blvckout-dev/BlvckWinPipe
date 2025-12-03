@@ -11,6 +11,9 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     {
         if (!_IsRunning.load(std::memory_order_acquire)) return false;
 
+        // We already have a listening pipe
+        if (_PipeHandle) return true;
+
         constexpr DWORD kPipeBufferSize = 0;
         constexpr DWORD kDefaultTimeoutMs = 0;
         constexpr LPSECURITY_ATTRIBUTES kSecurityAttributes = nullptr;
