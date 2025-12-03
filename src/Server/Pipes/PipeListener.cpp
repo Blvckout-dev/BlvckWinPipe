@@ -90,7 +90,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         return true;
     }
 
-    PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) :
+    PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) noexcept :
         _IOCP(iocp),
         _PipeName(std::move(pipeName))
     {

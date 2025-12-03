@@ -37,7 +37,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         AcceptCallback _OnAccept;
 
     public:
-        PipeListener(const WinHandle& iocp, std::wstring pipeName);
+        PipeListener(const WinHandle& iocp, std::wstring pipeName) noexcept;
 
         PipeListener(const PipeListener&) = delete;
         PipeListener& operator=(const PipeListener&) = delete;
