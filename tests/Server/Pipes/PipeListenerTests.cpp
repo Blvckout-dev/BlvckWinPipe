@@ -13,9 +13,9 @@ struct PipeListenerFixture {
     WinHandle iocp;
     PipeListener listener;
 
-    PipeListenerFixture()
-        : iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1))
-        , listener(iocp, L"\\\\.\\pipe\\TestPipe")
+    PipeListenerFixture() :
+        iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1)),
+        listener(iocp, L"\\\\.\\pipe\\TestPipe")
     {
         listener.SetOnAccept([](WinHandle) {});
     }
