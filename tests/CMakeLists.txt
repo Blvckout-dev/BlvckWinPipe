@@ -11,8 +11,9 @@ set(TEST_TARGET_NAME tests)
 
 add_executable(
     ${TEST_TARGET_NAME}
-    WinHandleTests.cpp
 )
+
+add_subdirectory(Utils)
 
 target_include_directories(
     ${TEST_TARGET_NAME}
