@@ -28,7 +28,5 @@ target_link_libraries(
     Blvckout::BlvckWinPipe
 )
 
-add_test(
-    NAME WinHandleTests
-    COMMAND ${TEST_TARGET_NAME}
-)
+include(Catch)
+catch_discover_tests(${TEST_TARGET_NAME})
