@@ -11,6 +11,17 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "preLaunchTask": "build"
+        },
+        {
+            "name": "Debug Tests",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/Debug/tests.exe",
+            "args": [],                               
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "preLaunchTask": "build"
         }
     ]
 }
