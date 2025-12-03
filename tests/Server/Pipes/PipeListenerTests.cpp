@@ -1,4 +1,4 @@
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <future>
 
@@ -12,25 +12,26 @@ TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
     WinHandle iocp(CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1));
     PipeListener listener(iocp, L"\\\\.\\pipe\\TestPipe");
 
-    SECTION("Init - Not running") {
+    SECTION("Initial state") {
         REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
     }
 
-    SECTION("Listen - Sets running") {
-        listener.Listen();
+    SECTION("Listen triggers running and PostAccept") {
+        listener.Listen(); // automatically triggers PostAccept
         REQUIRE(PipeListenerTestAccess::IsRunning(listener));
+        REQUIRE(PipeListenerTestAccess::PendingOps(listener) > 0);
     }
 
-    SECTION("Stop - Resets running") {
+    SECTION("Stop resets running and cancels pending operations") {
         listener.Listen();
         REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 1);
 
-        // Promise to ensure Stop thread is waiting
+        // Ensure Stop thread waits for pending ops
         std::promise<void> stopStarted;
         std::future<void> stopFuture = stopStarted.get_future();
 
-        // Thread that simulates listener stop
-        std::thread listenerStopThread([&listener, &stopStarted]() {
+        std::thread stopThread([&listener, &stopStarted]() {
             stopStarted.set_value();
             listener.Stop(); // blocks until pending ops zero
         });
@@ -38,7 +39,7 @@ TEST_CASE("PipeListener - Lifecycle", "[PipeListener]") {
         stopFuture.wait(); // Ensure Stop is now waiting
         PipeListenerTestAccess::SimulateOperationAbortedCompletion(listener);
 
-        listenerStopThread.join();
+        stopThread.join();
 
         REQUIRE(PipeListenerTestAccess::PendingOps(listener) == 0);
         REQUIRE(!PipeListenerTestAccess::IsRunning(listener));
