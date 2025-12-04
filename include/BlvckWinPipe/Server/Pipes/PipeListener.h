@@ -16,7 +16,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     class PipeListener : IPipeIoEntity
     {
     public:
-        using AcceptCallback = std::function<void(WinHandle pipeHandle)>;
+        using AcceptCallback = std::function<void(WinHandle)>;
 
     private:
         const WinHandle& _IOCP;
