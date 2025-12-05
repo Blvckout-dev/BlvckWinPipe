@@ -32,6 +32,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         if (!pipeHandle) {
             DWORD errCode = GetLastError();
+            if (Utils::Windows::IsRecoverableError(errCode)) {
+                return false;
+            }
+
             throw std::runtime_error(
                 "Failed to create named pipe instance: " +
                 Utils::Windows::FormatErrorMessage(errCode)
@@ -49,6 +53,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             )
         ) {
             DWORD errCode = GetLastError();
+            if (Utils::Windows::IsRecoverableError(errCode)) {
+                return false;
+            }
+            
             throw std::runtime_error(
                 "Failed to register with CreateIoCompletionPort: " +
                 Utils::Windows::FormatErrorMessage(errCode)
@@ -77,10 +85,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 // Failed to post completion — cleanup and report
                 DWORD pqErr = GetLastError();
                 _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
-                throw std::runtime_error(
-                    "Failed to post queued completion status: " +
-                    Utils::Windows::FormatErrorMessage(pqErr)
-                );
+                return false;
             }
         } else if (lastErr != ERROR_IO_PENDING) {
             _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
