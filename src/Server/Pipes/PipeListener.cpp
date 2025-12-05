@@ -104,6 +104,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     PipeListener::~PipeListener()
     {
+        Stop();
     }
 
     void PipeListener::HandleIoCompletion(DWORD bytesTransferred, OVERLAPPED* pOverlap, DWORD err)
