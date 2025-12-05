@@ -19,7 +19,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         constexpr LPSECURITY_ATTRIBUTES kSecurityAttributes = nullptr;
         
         // Create named pipe instance
-        _PipeHandle = CreateNamedPipeW(
+        WinHandle pipeHandle(CreateNamedPipeW(
             _PipeName.c_str(),
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
@@ -28,13 +28,13 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             kPipeBufferSize,
             kDefaultTimeoutMs,
             kSecurityAttributes
-        );
+        ));
 
-        if (!_PipeHandle) {
-            DWORD errorCode = GetLastError();
+        if (!pipeHandle) {
+            DWORD errCode = GetLastError();
             throw std::runtime_error(
                 "Failed to create named pipe instance: " +
-                Utils::Windows::FormatErrorMessage(errorCode)
+                Utils::Windows::FormatErrorMessage(errCode)
             );
         }
 
@@ -42,23 +42,22 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         constexpr DWORD kNumberOfConcurrentThreads = 0;
         if (
             !CreateIoCompletionPort(
-                _PipeHandle,
+                pipeHandle,
                 _IOCP,
                 reinterpret_cast<ULONG_PTR>(this),
                 kNumberOfConcurrentThreads
             )
         ) {
-            DWORD error = GetLastError();
-            _PipeHandle.Reset();
+            DWORD errCode = GetLastError();
             throw std::runtime_error(
                 "Failed to register with CreateIoCompletionPort: " +
-                Utils::Windows::FormatErrorMessage(error)
+                Utils::Windows::FormatErrorMessage(errCode)
             );
         }
 
         ZeroMemory(&_ConnectOverlap, sizeof(_ConnectOverlap));
 
-        BOOL connected = ConnectNamedPipe(_PipeHandle, &_ConnectOverlap);
+        BOOL connected = ConnectNamedPipe(pipeHandle, &_ConnectOverlap);
         _PendingOps.fetch_add(1, std::memory_order_acq_rel);
         
         DWORD lastErr = ERROR_SUCCESS;
@@ -78,7 +77,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 // Failed to post completion — cleanup and report
                 DWORD pqErr = GetLastError();
                 _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
-                _PipeHandle.Reset();
                 throw std::runtime_error(
                     "Failed to post queued completion status: " +
                     Utils::Windows::FormatErrorMessage(pqErr)
@@ -86,10 +84,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             }
         } else if (lastErr != ERROR_IO_PENDING) {
             _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
-            _PipeHandle.Reset();
             return false;
         }
 
+        _PipeHandle = std::move(pipeHandle);
         return true;
     }
 
