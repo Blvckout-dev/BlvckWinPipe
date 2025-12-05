@@ -59,4 +59,44 @@ namespace Blvckout::BlvckWinPipe::Utils::Windows
         
         return code + " - " + message;
     }
+
+    /*!
+     * @brief Checks whether a Win32 error code indicates a recoverable error.
+     *
+     * Errors considered recoverable are typically caused by temporary resource exhaustion
+     * or transient unavailability of system objects. These errors are safe to retry.
+     *
+     * Included recoverable errors:
+     * - ERROR_NOT_ENOUGH_MEMORY (8)
+     * - ERROR_OUTOFMEMORY (14)
+     * - ERROR_NO_SYSTEM_RESOURCES (1450)
+     * - ERROR_TOO_MANY_OPEN_FILES (4)
+     * - ERROR_PIPE_BUSY (231)
+     * - ERROR_BUSY (170)
+     *
+     * @param errorCode The Win32 error code to check (from GetLastError()).
+     * @return `true` if the error code is recoverable/retryable.
+     *
+     * @note Intended for Win32 APIs where temporary resource exhaustion may occur,
+     * such as CreateNamedPipeW, ConnectNamedPipe, or CreateIoCompletionPort.
+     */
+    inline bool IsRecoverableError(DWORD errorCode) {
+        switch (errorCode) {
+            // Memory / kernel resources
+            case ERROR_NOT_ENOUGH_MEMORY:
+            case ERROR_OUTOFMEMORY:
+            case ERROR_NO_SYSTEM_RESOURCES:
+
+            // Handle / file limits
+            case ERROR_TOO_MANY_OPEN_FILES:
+
+            // Pipe busy / object busy
+            case ERROR_PIPE_BUSY:
+            case ERROR_BUSY:
+                return true;
+
+            default:
+                return false;
+        }
+    }
 } // namespace Blvckout::BlvckWinPipe::Utils::Windows
