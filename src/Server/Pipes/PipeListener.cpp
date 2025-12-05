@@ -7,6 +7,30 @@
 
 namespace Blvckout::BlvckWinPipe::Server::Pipes
 {
+    /**
+     * @brief Posts an asynchronous accept operation for a new client connection.
+     *
+     * Creates a new named pipe instance, registers it with the IO completion port (`_IOCP`),
+     * and initiates an overlapped ConnectNamedPipe operation. On success, the handle
+     * is stored in `_PipeHandle` and `_PendingOps` is incremented to track the pending operation.
+     *
+     * If any step fails due to a **transient/recoverable error** (e.g., low system resources,
+     * pipe busy, or temporary kernel exhaustion), the function returns `false` so the caller
+     * can retry later. Permanent errors (e.g., invalid parameters) throw a `std::runtime_error`.
+     *
+     * @note The function assumes `_IsRunning` is `true` to proceed. If `_PipeHandle` is
+     *       already valid, no new pipe is created and the function returns `true`. 
+     *       Partially initialized pipe handles are cleaned up automatically
+     *       using the RAII `WinHandle` wrapper.
+     *
+     * @return `true` if the accept operation was successfully posted or `_PipeHandle` is
+     *         already valid.
+     * @return `false` if the listener has been stopped or a recoverable/transient error occurred,
+     *         indicating the operation should be retried later.
+     *
+     * @throws `std::runtime_error` If a non-recoverable Win32 error occurs during pipe
+     *         creation, IOCP registration, or ConnectNamedPipe.
+     */
     bool PipeListener::PostAccept()
     {
         if (!_IsRunning.load(std::memory_order_acquire)) return false;
