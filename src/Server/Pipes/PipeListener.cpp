@@ -120,6 +120,11 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         return true;
     }
 
+    void PipeListener::StopAndNotifyError(std::string_view message) {
+        Stop();
+        _OnError(*this, message);
+    }
+
     PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) noexcept :
         _IOCP(iocp),
         _PipeName(std::move(pipeName))

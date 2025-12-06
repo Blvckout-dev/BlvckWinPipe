@@ -45,6 +45,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             uint32_t maxAttempts = 5u
         );
 
+        void StopAndNotifyError(std::string_view message);
+
         // Events
         AcceptCallback _OnAccept;
         ErrorCallback _OnError;
