@@ -18,6 +18,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     {
     public:
         using AcceptCallback = std::function<void(WinHandle)>;
+        using ErrorCallback = std::function<void(PipeListener&, std::string_view)>;
 
     private:
         const WinHandle& _IOCP;
@@ -46,6 +47,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         // Events
         AcceptCallback _OnAccept;
+        ErrorCallback _OnError;
 
     public:
         PipeListener(const WinHandle& iocp, std::wstring pipeName) noexcept;
@@ -65,6 +67,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         // Events
         void SetOnAccept(AcceptCallback cb) { _OnAccept = std::move(cb); }
+        void SetOnError(ErrorCallback cb) { _OnError = std::move(cb); }
 
         // Testing
         friend class PipeListenerTestAccess;
