@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -32,6 +33,16 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         std::atomic<bool> _IsRunning { false };
 
         bool PostAccept();
+        
+        template<typename Func>
+        requires std::invocable<Func> &&
+            std::same_as<std::invoke_result_t<Func>, bool>
+        bool RetryWithBackoff(
+            Func&& operation,
+            uint32_t initialDelayMs = 5u,
+            uint32_t maxDelayMs = 1000u,
+            uint32_t maxAttempts = 5u
+        );
 
         // Events
         AcceptCallback _OnAccept;

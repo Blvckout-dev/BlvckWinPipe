@@ -158,6 +158,27 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         }
     }
 
+    template<typename Func>
+    requires std::invocable<Func> &&
+        std::same_as<std::invoke_result_t<Func>, bool>
+    bool PipeListener::RetryWithBackoff(
+        Func&& operation,
+        uint32_t initialDelayMs,
+        uint32_t maxDelayMs,
+        uint32_t maxAttempts
+    ) {
+        uint32_t delayMs = initialDelayMs;
+
+        for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
+            if (operation()) return true;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
+            delayMs = std::min(maxDelayMs, delayMs << 2); // exponential backoff capped by maxDelayMs
+        }
+
+        return false;
+    }
+
     void PipeListener::Listen()
     {
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
