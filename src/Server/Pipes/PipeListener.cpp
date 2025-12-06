@@ -122,7 +122,9 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     void PipeListener::TryPostAccept() {
         try {
-            if (!RetryWithBackoff([this] { return PostAccept(); })) {
+            bool success = RetryWithBackoff([this] { return PostAccept(); });
+
+            if (!success && _IsRunning.load(std::memory_order_acquire)) {
                 constexpr char kPostAcceptFailedMsg[] =
                     "Failed to post a accept for new connections after retries";
                 
@@ -186,6 +188,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         uint32_t delayMs = initialDelayMs;
 
         for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
+            if (!_IsRunning.load(std::memory_order_acquire)) return false;
             if (operation()) return true;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
