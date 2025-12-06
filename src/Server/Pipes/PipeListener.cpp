@@ -120,6 +120,21 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         return true;
     }
 
+    void PipeListener::TryPostAccept() {
+        try {
+            if (!RetryWithBackoff([this] { return PostAccept(); })) {
+                constexpr char kPostAcceptFailedMsg[] =
+                    "Failed to post a accept for new connections after retries";
+                
+                StopAndNotifyError(kPostAcceptFailedMsg);
+            }
+        } catch (const std::exception& e) {
+            StopAndNotifyError(e.what());
+        } catch (...) {
+            StopAndNotifyError("Unknown error");
+        }
+    }
+
     void PipeListener::StopAndNotifyError(std::string_view message) {
         Stop();
         _OnError(*this, message);
@@ -148,11 +163,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             // ToDo: Implement logging
         }
 
-        try {
-            PostAccept();
-        } catch(const std::exception& e) {
-            // ToDo: Implement logging
-        }
+        TryPostAccept();
 
         // Decrement pending operations
         if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) == 1)
@@ -192,10 +203,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             throw std::runtime_error("OnAccept callback must be set before calling Listen()");
         }
 
-        if (!PostAccept()) {
-            Stop();
-            // ToDo: Implement OnError event
-        }
+        TryPostAccept();
     }
 
     void PipeListener::Stop() noexcept

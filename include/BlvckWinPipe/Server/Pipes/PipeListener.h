@@ -34,6 +34,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         std::atomic<bool> _IsRunning { false };
 
         bool PostAccept();
+        void TryPostAccept();
         
         template<typename Func>
         requires std::invocable<Func> &&
