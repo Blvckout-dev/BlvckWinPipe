@@ -50,6 +50,12 @@ namespace Blvckout::BlvckWinPipe::Server
         // ToDo: Pass handle to PipeSession and add to sessions vector
     }
 
+    void PipeServer::OnListenerError(Pipes::PipeListener& listener, std::string_view errMsg)
+    {
+        // ToDo: Restart or recreate listener
+        // ToDo: Implement logging
+    }
+
     PipeServer::PipeServer(const std::wstring& name) :
         _Name(name),
         _PipeName(std::wstring(PIPE_NAME_PREFIX) + name),
@@ -89,8 +95,12 @@ namespace Blvckout::BlvckWinPipe::Server
         for (size_t i = 0; i < _MaxListeners; i++) {
             auto listener = std::make_unique<Pipes::PipeListener>(_IOCP, PipeName());
             
-            listener->SetOnAccept([this](WinHandle pipeHandle){
+            listener->SetOnAccept([this](WinHandle pipeHandle) {
                 OnClientConnect(std::move(pipeHandle));
+            });
+
+            listener->SetOnError([this](Pipes::PipeListener& pipeListener, std::string_view message) {
+                OnListenerError(pipeListener, message);
             });
             
             listener->Listen();

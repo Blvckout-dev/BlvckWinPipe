@@ -33,6 +33,7 @@ namespace Blvckout::BlvckWinPipe::Server
         void WorkerThread();
 
         void OnClientConnect(WinHandle pipeHandle);
+        void OnListenerError(Pipes::PipeListener& listener, std::string_view errMsg);
     public:
         PipeServer(const std::wstring& name);
         ~PipeServer();
