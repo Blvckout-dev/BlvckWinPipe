@@ -200,6 +200,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     void PipeListener::Listen()
     {
+        if (!_OnError) {
+            throw std::runtime_error("OnError callback must be set before calling Listen()");
+        }
+        
         if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
 
         if (!_OnAccept) {
