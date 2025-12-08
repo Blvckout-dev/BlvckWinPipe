@@ -53,7 +53,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         ErrorCallback _OnError;
 
     public:
-        PipeListener(const WinHandle& iocp, std::wstring pipeName) noexcept;
+        PipeListener(const WinHandle& iocp, std::wstring pipeName);
 
         PipeListener(const PipeListener&) = delete;
         PipeListener& operator=(const PipeListener&) = delete;

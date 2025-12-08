@@ -144,7 +144,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         _OnError(*this, message);
     }
 
-    PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) noexcept :
+    PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) :
         _IOCP(iocp),
         _PipeName(std::move(pipeName))
     {
