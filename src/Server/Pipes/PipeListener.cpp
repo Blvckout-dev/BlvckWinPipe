@@ -192,7 +192,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
             if (!_IsRunning.load(std::memory_order_acquire)) return false;
-            if (operation()) return true;
+            if (std::invoke(std::forward<Func>(operation))) return true;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
             delayMs = std::min(maxDelayMs, delayMs << 2); // exponential backoff capped by maxDelayMs
