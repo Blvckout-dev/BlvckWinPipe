@@ -120,9 +120,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         return true;
     }
 
-    void PipeListener::TryPostAccept() {
+    void PipeListener::TryPostAccept()
+    {
         try {
-            bool success = RetryWithBackoff([this] { return PostAccept(); });
+            bool success = RetryWithBackoff([this]{ return PostAccept(); });
 
             if (!success && _IsRunning.load(std::memory_order_acquire)) {
                 constexpr char kPostAcceptFailedMsg[] =
@@ -137,7 +138,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         }
     }
 
-    void PipeListener::StopAndNotifyError(std::string_view message) {
+    void PipeListener::StopAndNotifyError(std::string_view message)
+    {
         Stop();
         _OnError(*this, message);
     }
@@ -159,7 +161,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         {
             // Promote to session
             _OnAccept(std::move(_PipeHandle)); // Server callback
-        } else{
+        } else {
             // Cleanup failed/canceled pipe
             _PipeHandle.Reset();
             // ToDo: Implement logging
@@ -184,7 +186,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         uint32_t initialDelayMs,
         uint32_t maxDelayMs,
         uint32_t maxAttempts
-    ) {
+    )
+    {
         uint32_t delayMs = initialDelayMs;
 
         for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
@@ -224,7 +227,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
             _PendingOpsCv.wait(
                 lock,
-                [this] { return _PendingOps.load(std::memory_order_acquire) == 0; }
+                [this]{ return _PendingOps.load(std::memory_order_acquire) == 0; }
             );
         } catch (...) {
             // ToDo: Implement logging

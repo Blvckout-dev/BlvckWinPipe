@@ -88,7 +88,7 @@ namespace Blvckout::BlvckWinPipe::Server
 
         // Spawn worker threads
         for (size_t i = 0; i < _MaxWorkerThreads; ++i) {
-            _Workers.emplace_back([this] { this->WorkerThread(); });
+            _Workers.emplace_back([this]{ this->WorkerThread(); });
         }
 
         // Start listeners
