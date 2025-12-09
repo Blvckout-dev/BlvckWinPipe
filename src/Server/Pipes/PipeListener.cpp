@@ -89,11 +89,11 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         ZeroMemory(&_ConnectOverlap, sizeof(_ConnectOverlap));
 
-        BOOL connected = ConnectNamedPipe(pipeHandle, &_ConnectOverlap);
+        _PipeHandle = std::move(pipeHandle);
         _PendingOps.fetch_add(1, std::memory_order_acq_rel);
-        
-        DWORD lastErr = ERROR_SUCCESS;
-        if (!connected) lastErr = GetLastError();
+
+        BOOL connected = ConnectNamedPipe(_PipeHandle, &_ConnectOverlap);
+        DWORD lastErr = connected ? ERROR_SUCCESS : GetLastError();
 
         if (connected || lastErr == ERROR_PIPE_CONNECTED) {
             // Completed synchronously — client connected immediately
@@ -109,14 +109,31 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 // Failed to post completion — cleanup and report
                 DWORD pqErr = GetLastError();
                 _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
-                return false;
+                _PipeHandle.Reset();
+                
+                if (Utils::Windows::IsRecoverableError(pqErr)) {
+                    return false;
+                }
+
+                throw std::runtime_error(
+                    "PostQueuedCompletionStatus failed: " +
+                    Utils::Windows::FormatErrorMessage(pqErr)
+                );
             }
         } else if (lastErr != ERROR_IO_PENDING) {
             _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
-            return false;
+            _PipeHandle.Reset();
+            
+            if (Utils::Windows::IsRecoverableError(lastErr)) {
+                return false;
+            }
+
+            throw std::runtime_error(
+                "ConnectNamedPipe failed: " +
+                Utils::Windows::FormatErrorMessage(lastErr)
+            );
         }
 
-        _PipeHandle = std::move(pipeHandle);
         return true;
     }
 
@@ -167,7 +184,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             // ToDo: Implement logging
         }
 
-        TryPostAccept();
+        if (_IsRunning.load(std::memory_order_acquire))
+            TryPostAccept();
 
         // Decrement pending operations
         if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) == 1)
