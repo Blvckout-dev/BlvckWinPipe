@@ -20,6 +20,21 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         using AcceptCallback = std::function<void(WinHandle)>;
         using ErrorCallback = std::function<void(PipeListener&, std::string_view)>;
 
+        enum class State : std::uint8_t {
+            Stopped,
+            Stopping,
+            Starting,
+            Running
+        };
+
+        struct ErrorInfo {
+            std::string Message;
+
+            bool HasError() const {
+                return !Message.empty();
+            }
+        };
+
     private:
         const WinHandle& _IOCP;
         std::wstring _PipeName;
@@ -31,7 +46,9 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         std::mutex _PendingOpsMutex;
         std::condition_variable _PendingOpsCv;
 
-        std::atomic<bool> _IsRunning { false };
+        std::atomic<State> _State { State::Stopped };
+
+        ErrorInfo _Error;
 
         bool PostAccept();
         void TryPostAccept();
@@ -67,6 +84,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         void Listen();
         void Stop() noexcept;
+
+        bool IsRunning() const noexcept {
+            return _State.load(std::memory_order_acquire) == State::Running;
+        }
 
         // Events
         void SetOnAccept(AcceptCallback cb) { _OnAccept = std::move(cb); }

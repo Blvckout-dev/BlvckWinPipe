@@ -33,7 +33,12 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
      */
     bool PipeListener::PostAccept()
     {
-        if (!_IsRunning.load(std::memory_order_acquire)) return false;
+        if (
+            _State.load(std::memory_order_acquire) != State::Starting &&
+            IsRunning()
+        ) {
+            return false;
+        }
 
         // We already have a listening pipe
         if (_PipeHandle) return true;
@@ -142,7 +147,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         try {
             bool success = RetryWithBackoff([this]{ return PostAccept(); });
 
-            if (!success && _IsRunning.load(std::memory_order_acquire)) {
+            if (!success) {
                 constexpr char kPostAcceptFailedMsg[] =
                     "Failed to post a accept for new connections after retries";
                 
@@ -184,7 +189,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             // ToDo: Implement logging
         }
 
-        if (_IsRunning.load(std::memory_order_acquire))
+        if (IsRunning())
             TryPostAccept();
 
         // Decrement pending operations
@@ -209,7 +214,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         uint32_t delayMs = initialDelayMs;
 
         for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
-            if (!_IsRunning.load(std::memory_order_acquire)) return false;
             if (std::invoke(std::forward<Func>(operation))) return true;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
@@ -229,21 +233,45 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             throw std::runtime_error("OnAccept callback must be set before calling Listen()");
         }
 
-        if (_IsRunning.exchange(true, std::memory_order_acq_rel)) return;
+        State expected = State::Stopped;
+        if (
+            !_State.compare_exchange_strong(
+                expected,
+                State::Starting,
+                std::memory_order_acq_rel
+            )
+        ) {
+            // Already started or in invalid state
+            return;
+        }
 
         TryPostAccept();
+
+        _State.store(State::Running, std::memory_order_release);
     }
 
     void PipeListener::Stop() noexcept
     {
-        if (!_IsRunning.exchange(false, std::memory_order_acq_rel)) return;
+        State expected = State::Running;
+        if (
+            !_State.compare_exchange_strong(
+                expected,
+                State::Stopping,
+                std::memory_order_acq_rel
+            )
+        ) {
+            // Already stopped or in invalid state
+            return;
+        }
 
-        CancelIoEx(_PipeHandle, nullptr);
+        if (_PipeHandle) {
+            CancelIoEx(_PipeHandle, nullptr);
+        }
 
         try {
             std::unique_lock<std::mutex> lock(_PendingOpsMutex);
 
-            _PendingOpsCv.wait(
+            _PendingOpsCv.wait(// ToDo: Implement a timeout
                 lock,
                 [this]{ return _PendingOps.load(std::memory_order_acquire) == 0; }
             );

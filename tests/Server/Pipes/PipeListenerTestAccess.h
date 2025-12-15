@@ -15,7 +15,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     public:
         static bool IsRunning(const PipeListener& listener) noexcept
         {
-            return listener._IsRunning.load(std::memory_order_acquire);
+            return listener.IsRunning();
         }
 
         static size_t PendingOps(const PipeListener& listener) noexcept
