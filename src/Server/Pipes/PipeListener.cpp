@@ -148,22 +148,17 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             bool success = RetryWithBackoff([this]{ return PostAccept(); });
 
             if (!success) {
-                constexpr char kPostAcceptFailedMsg[] =
-                    "Failed to post a accept for new connections after retries";
-                
-                StopAndNotifyError(kPostAcceptFailedMsg);
+                HandleFatalError(GetLastError());
             }
-        } catch (const std::exception& e) {
-            StopAndNotifyError(e.what());
         } catch (...) {
-            StopAndNotifyError("Unknown error");
+            HandleFatalError(GetLastError());
         }
     }
 
-    void PipeListener::StopAndNotifyError(std::string_view message)
+    void PipeListener::HandleFatalError(DWORD errCode) noexcept
     {
+        _ErrorInfo.ErrorCode = errCode;
         Stop();
-        _OnError(*this, message);
     }
 
     PipeListener::PipeListener(const WinHandle &iocp, std::wstring pipeName) :
@@ -193,12 +188,17 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             TryPostAccept();
 
         // Decrement pending operations
-        if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) == 1)
-        {
-            // Notify Stop()
-            std::lock_guard<std::mutex> lock(_PendingOpsMutex);
-            _PendingOpsCv.notify_all();
-        }
+        if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) != 1) return;
+
+        // Notify Stop()
+        std::lock_guard<std::mutex> lock(_PendingOpsMutex);
+        _PendingOpsCv.notify_all();
+
+        if (_State.load(std::memory_order_acquire) != State::Stopping) return;
+
+        _State.store(State::Stopped, std::memory_order_release);
+
+        if (_OnStop) _OnStop(this);
     }
 
     template<typename Func>
@@ -225,10 +225,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     void PipeListener::Listen()
     {
-        if (!_OnError) {
-            throw std::runtime_error("OnError callback must be set before calling Listen()");
-        }
-
         if (!_OnAccept) {
             throw std::runtime_error("OnAccept callback must be set before calling Listen()");
         }
@@ -252,17 +248,16 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
     void PipeListener::Stop() noexcept
     {
-        State expected = State::Running;
+        auto currentState = _State.load(std::memory_order_acquire);
         if (
-            !_State.compare_exchange_strong(
-                expected,
-                State::Stopping,
-                std::memory_order_acq_rel
-            )
+            currentState == State::Stopping ||
+            currentState == State::Stopped
         ) {
-            // Already stopped or in invalid state
+            // Already stopping or stopped
             return;
         }
+
+        _State.store(State::Stopping, std::memory_order_release);
 
         if (_PipeHandle) {
             CancelIoEx(_PipeHandle, nullptr);
@@ -280,5 +275,16 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         }
 
         _PipeHandle.Reset();
+
+        if (_PendingOps.load(std::memory_order_acquire)) {
+            // Open async io work, state will be finalized by worker
+            return;
+        }
+
+        _State.store(State::Stopped, std::memory_order_release);
+
+        if (_OnStop) {
+            _OnStop(this);
+        }
     }
 }

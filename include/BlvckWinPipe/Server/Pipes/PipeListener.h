@@ -18,7 +18,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     {
     public:
         using AcceptCallback = std::function<void(WinHandle)>;
-        using ErrorCallback = std::function<void(PipeListener&, std::string_view)>;
+        using StopCallback = std::function<void(PipeListener*)>;
 
         enum class State : std::uint8_t {
             Stopped,
@@ -28,10 +28,10 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         };
 
         struct ErrorInfo {
-            std::string Message;
+            DWORD ErrorCode { ERROR_SUCCESS };
 
-            bool HasError() const {
-                return !Message.empty();
+            bool HasError() const noexcept {
+                return ErrorCode != ERROR_SUCCESS;
             }
         };
 
@@ -48,7 +48,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         std::atomic<State> _State { State::Stopped };
 
-        ErrorInfo _Error;
+        ErrorInfo _ErrorInfo;
 
         bool PostAccept();
         void TryPostAccept();
@@ -63,11 +63,11 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             uint32_t maxAttempts = 5u
         );
 
-        void StopAndNotifyError(std::string_view message);
+        void HandleFatalError(DWORD errCode) noexcept;
 
         // Events
         AcceptCallback _OnAccept;
-        ErrorCallback _OnError;
+        StopCallback _OnStop;
 
     public:
         PipeListener(const WinHandle& iocp, std::wstring pipeName);
@@ -89,9 +89,11 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             return _State.load(std::memory_order_acquire) == State::Running;
         }
 
+        const ErrorInfo& GetErrorInfo() const noexcept { return _ErrorInfo; };
+
         // Events
         void SetOnAccept(AcceptCallback cb) { _OnAccept = std::move(cb); }
-        void SetOnError(ErrorCallback cb) { _OnError = std::move(cb); }
+        void SetOnStop(StopCallback cb) { _OnStop = std::move(cb); }
 
         // Testing
         friend class PipeListenerTestAccess;

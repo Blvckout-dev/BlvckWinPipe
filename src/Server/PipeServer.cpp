@@ -50,9 +50,14 @@ namespace Blvckout::BlvckWinPipe::Server
         // ToDo: Pass handle to PipeSession and add to sessions vector
     }
 
-    void PipeServer::OnListenerError(Pipes::PipeListener& listener, std::string_view errMsg)
+    void PipeServer::OnListenerStop(Pipes::PipeListener* listener) noexcept
     {
-        // ToDo: Restart or recreate listener
+        const auto& error = listener->GetErrorInfo();
+
+        if (error.HasError()) {
+            
+        }
+        // ToDo: Try to restart listener
         // ToDo: Implement logging
     }
 
@@ -99,8 +104,8 @@ namespace Blvckout::BlvckWinPipe::Server
                 OnClientConnect(std::move(pipeHandle));
             });
 
-            listener->SetOnError([this](Pipes::PipeListener& pipeListener, std::string_view message) {
-                OnListenerError(pipeListener, message);
+            listener->SetOnStop([this](Pipes::PipeListener* pipeListener) noexcept {
+                OnListenerStop(pipeListener);
             });
             
             listener->Listen();
