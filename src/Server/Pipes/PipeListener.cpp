@@ -34,8 +34,8 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
     bool PipeListener::PostAccept()
     {
         if (
-            _State.load(std::memory_order_acquire) != State::Starting &&
-            IsRunning()
+            _State.load(std::memory_order_acquire) == State::Stopping ||
+            _State.load(std::memory_order_acquire) == State::Stopped
         ) {
             return false;
         }
