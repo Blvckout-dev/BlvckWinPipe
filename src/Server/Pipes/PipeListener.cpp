@@ -150,10 +150,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         // Decrement pending operations
         if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) != 1) return;
 
-        // Notify Stop()
-        std::lock_guard<std::mutex> lock(_PendingOpsMutex);
-        _PendingOpsCv.notify_all();
-
         if (_State.load(std::memory_order_acquire) != State::Stopping) return;
 
         _State.store(State::Stopped, std::memory_order_release);
@@ -204,17 +200,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         if (_PipeHandle) {
             CancelIoEx(_PipeHandle, nullptr);
-        }
-
-        try {
-            std::unique_lock<std::mutex> lock(_PendingOpsMutex);
-
-            _PendingOpsCv.wait(// ToDo: Implement a timeout
-                lock,
-                [this]{ return _PendingOps.load(std::memory_order_acquire) == 0; }
-            );
-        } catch (...) {
-            // ToDo: Implement logging
         }
 
         _PipeHandle.Reset();

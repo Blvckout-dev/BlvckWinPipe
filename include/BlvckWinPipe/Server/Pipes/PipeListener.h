@@ -43,8 +43,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         OVERLAPPED _ConnectOverlap {};
 
         std::atomic<size_t> _PendingOps {0};
-        std::mutex _PendingOpsMutex;
-        std::condition_variable _PendingOpsCv;
 
         std::atomic<State> _State { State::Stopped };
 
