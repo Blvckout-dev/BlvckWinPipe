@@ -50,7 +50,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         ErrorInfo _ErrorInfo;
 
-        bool PostAccept();
+        DWORD PostAccept() noexcept;
         void TryPostAccept();
         
         template<typename Func>

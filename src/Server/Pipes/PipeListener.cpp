@@ -11,37 +11,32 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
      * @brief Posts an asynchronous accept operation for a new client connection.
      *
      * Creates a new named pipe instance, registers it with the IO completion port (`_IOCP`),
-     * and initiates an overlapped ConnectNamedPipe operation. On success, the handle
-     * is stored in `_PipeHandle` and `_PendingOps` is incremented to track the pending operation.
-     *
-     * If any step fails due to a **transient/recoverable error** (e.g., low system resources,
-     * pipe busy, or temporary kernel exhaustion), the function returns `false` so the caller
-     * can retry later. Permanent errors (e.g., invalid parameters) throw a `std::runtime_error`.
-     *
-     * @note The function assumes `_IsRunning` is `true` to proceed. If `_PipeHandle` is
-     *       already valid, no new pipe is created and the function returns `true`. 
-     *       Partially initialized pipe handles are cleaned up automatically
-     *       using the RAII `WinHandle` wrapper.
-     *
-     * @return `true` if the accept operation was successfully posted or `_PipeHandle` is
-     *         already valid.
-     * @return `false` if the listener has been stopped or a recoverable/transient error occurred,
-     *         indicating the operation should be retried later.
-     *
-     * @throws `std::runtime_error` If a non-recoverable Win32 error occurs during pipe
-     *         creation, IOCP registration, or ConnectNamedPipe.
+     * and initiates an overlapped `ConnectNamedPipe` operation. If the operation is posted
+     * successfully, the pipe handle is stored in `_PipeHandle` and `_PendingOps` is incremented
+     * to track the pending I/O.
+     * 
+     * @return DWORD Win32 error code:
+     * - `ERROR_SUCCESS` if the accept operation was successfully posted or is already pending
+     * - `ERROR_OPERATION_ABORTED` if the listener is stopping or has already stopped.
+     * - Otherwise: The Win32 error code indicating why the accept could not be posted
+     * 
+     * @note Completion of the accept operation is reported asynchronously via the IO completion port
+     * and does not imply that a client has already connected at the time this function returns.
+     * 
+     * @note This function is idempotent: if an accept operation is already pending (i.e. `_PipeHandle`
+     * is valid), no new operation is posted and `ERROR_SUCCESS` is returned.
      */
-    bool PipeListener::PostAccept()
+    DWORD PipeListener::PostAccept() noexcept
     {
         if (
             _State.load(std::memory_order_acquire) == State::Stopping ||
             _State.load(std::memory_order_acquire) == State::Stopped
         ) {
-            return false;
+            return ERROR_OPERATION_ABORTED;
         }
 
         // We already have a listening pipe
-        if (_PipeHandle) return true;
+        if (_PipeHandle) return ERROR_SUCCESS;
 
         constexpr DWORD kPipeBufferSize = 0;
         constexpr DWORD kDefaultTimeoutMs = 0;
@@ -60,15 +55,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         ));
 
         if (!pipeHandle) {
-            DWORD errCode = GetLastError();
-            if (Utils::Windows::IsRecoverableError(errCode)) {
-                return false;
-            }
-
-            throw std::runtime_error(
-                "Failed to create named pipe instance: " +
-                Utils::Windows::FormatErrorMessage(errCode)
-            );
+            return GetLastError();
         }
 
         // Register with IOCP
@@ -81,15 +68,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 kNumberOfConcurrentThreads
             )
         ) {
-            DWORD errCode = GetLastError();
-            if (Utils::Windows::IsRecoverableError(errCode)) {
-                return false;
-            }
-            
-            throw std::runtime_error(
-                "Failed to register with CreateIoCompletionPort: " +
-                Utils::Windows::FormatErrorMessage(errCode)
-            );
+            return GetLastError();
         }
 
         ZeroMemory(&_ConnectOverlap, sizeof(_ConnectOverlap));
@@ -116,36 +95,22 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
                 _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
                 _PipeHandle.Reset();
                 
-                if (Utils::Windows::IsRecoverableError(pqErr)) {
-                    return false;
-                }
-
-                throw std::runtime_error(
-                    "PostQueuedCompletionStatus failed: " +
-                    Utils::Windows::FormatErrorMessage(pqErr)
-                );
+                return pqErr;
             }
         } else if (lastErr != ERROR_IO_PENDING) {
             _PendingOps.fetch_sub(1, std::memory_order_acq_rel);
             _PipeHandle.Reset();
             
-            if (Utils::Windows::IsRecoverableError(lastErr)) {
-                return false;
-            }
-
-            throw std::runtime_error(
-                "ConnectNamedPipe failed: " +
-                Utils::Windows::FormatErrorMessage(lastErr)
-            );
+            return lastErr;
         }
 
-        return true;
+        return ERROR_SUCCESS;
     }
 
     void PipeListener::TryPostAccept()
     {
         try {
-            bool success = RetryWithBackoff([this]{ return PostAccept(); });
+            bool success = RetryWithBackoff([this]{ return PostAccept() == ERROR_SUCCESS; });
 
             if (!success) {
                 HandleFatalError(GetLastError());
@@ -184,8 +149,16 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             // ToDo: Implement logging
         }
 
-        if (IsRunning())
-            TryPostAccept();
+        if (IsRunning()) {
+            DWORD lastErr = PostAccept();
+            if (lastErr != ERROR_SUCCESS) {
+                if (Utils::Windows::IsRecoverableError(lastErr)) {
+                    // ToDo: Retry via ThreadPoolTimer
+                } else {
+                    HandleFatalError(lastErr);
+                }
+            }
+        }
 
         // Decrement pending operations
         if (_PendingOps.fetch_sub(1, std::memory_order_acq_rel) != 1) return;
