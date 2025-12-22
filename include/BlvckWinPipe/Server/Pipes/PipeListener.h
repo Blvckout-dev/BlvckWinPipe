@@ -51,17 +51,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         ErrorInfo _ErrorInfo;
 
         DWORD PostAccept() noexcept;
-        void TryPostAccept();
-        
-        template<typename Func>
-        requires std::invocable<Func> &&
-            std::same_as<std::invoke_result_t<Func>, bool>
-        bool RetryWithBackoff(
-            Func&& operation,
-            uint32_t initialDelayMs = 5u,
-            uint32_t maxDelayMs = 1000u,
-            uint32_t maxAttempts = 5u
-        );
 
         void HandleFatalError(DWORD errCode) noexcept;
 
@@ -82,7 +71,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
 
         void HandleIoCompletion(DWORD bytesTransferred, OVERLAPPED* pOverlap, DWORD err);
 
-        void Listen();
+        bool Listen();
         void Stop() noexcept;
 
         bool IsRunning() const noexcept {

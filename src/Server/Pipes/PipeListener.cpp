@@ -107,19 +107,6 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         return ERROR_SUCCESS;
     }
 
-    void PipeListener::TryPostAccept()
-    {
-        try {
-            bool success = RetryWithBackoff([this]{ return PostAccept() == ERROR_SUCCESS; });
-
-            if (!success) {
-                HandleFatalError(GetLastError());
-            }
-        } catch (...) {
-            HandleFatalError(GetLastError());
-        }
-    }
-
     void PipeListener::HandleFatalError(DWORD errCode) noexcept
     {
         _ErrorInfo.ErrorCode = errCode;
@@ -174,29 +161,7 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
         if (_OnStop) _OnStop(this);
     }
 
-    template<typename Func>
-    requires std::invocable<Func> &&
-        std::same_as<std::invoke_result_t<Func>, bool>
-    bool PipeListener::RetryWithBackoff(
-        Func&& operation,
-        uint32_t initialDelayMs,
-        uint32_t maxDelayMs,
-        uint32_t maxAttempts
-    )
-    {
-        uint32_t delayMs = initialDelayMs;
-
-        for (uint32_t attempt = 0; attempt < maxAttempts; ++attempt) {
-            if (std::invoke(std::forward<Func>(operation))) return true;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
-            delayMs = std::min(maxDelayMs, delayMs << 2); // exponential backoff capped by maxDelayMs
-        }
-
-        return false;
-    }
-
-    void PipeListener::Listen()
+    bool PipeListener::Listen()
     {
         if (!_OnAccept) {
             throw std::runtime_error("OnAccept callback must be set before calling Listen()");
@@ -211,12 +176,17 @@ namespace Blvckout::BlvckWinPipe::Server::Pipes
             )
         ) {
             // Already started or in invalid state
-            return;
+            return false;
         }
 
-        TryPostAccept();
+        DWORD errCode = PostAccept();
+        if (errCode != ERROR_SUCCESS) {
+            HandleFatalError(errCode);
+            return false;
+        }
 
         _State.store(State::Running, std::memory_order_release);
+        return true;
     }
 
     void PipeListener::Stop() noexcept
